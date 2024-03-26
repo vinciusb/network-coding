@@ -1,8 +1,8 @@
 #include <stdio.h>
+#include "../netcoding/netcoding.h"
 #include "contiki-lib.h"
 #include "contiki-net.h"
 #include "contiki.h"
-// #include "net/mac/tsch/tsch.h"
 
 #define UDP_PORT 61618
 
@@ -44,14 +44,22 @@ PROCESS_THREAD(udp_process, ev, data) {
     etimer_set(&periodic_timer, 20 * CLOCK_SECOND);
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&periodic_timer));
     etimer_set(&periodic_timer, SEND_INTERVAL);
+
+    int packet_id = 0;
+    printf("PACKET SIZE = %d\n", (int)PACKET_SIZE);
+
     while(1) {
-        uint8_t buf[SIZE];
+        netcoding_packet packet;
+        packet.header.holding_packets[0] = packet_id;
+
         PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&periodic_timer));
         etimer_reset(&periodic_timer);
 
-        printf("Sending broadcast\n");
+        printf("Sending broadcast message %d\n", packet_id);
         uip_create_linklocal_allnodes_mcast(&addr);
-        simple_udp_sendto(&broadcast_connection, buf, sizeof(buf), &addr);
+        simple_udp_sendto(&broadcast_connection, &packet, PACKET_SIZE, &addr);
+
+        packet_id++;
     }
 
     PROCESS_END();

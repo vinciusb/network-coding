@@ -1,12 +1,8 @@
 CONTIKI=../../../..
-# MAKE_MAC = MAKE_MAC_TSCH
-all: $(CONTIKI_PROJECT)
 
-CFLAGS+= -DPROJECT_CONF_H=\"project-conf.h\"
+CFLAGS+= -DPROJECT_CONF_H=\"project-conf.h\" -I ../netcoding
 
 CONTIKI_WITH_IPV6 = 1
-
-APPS += orchestra
-MODULES += core/net/mac/tsch
+# MODULES_REL += netcoding
 
 include $(CONTIKI)/Makefile.include
