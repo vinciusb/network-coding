@@ -22,6 +22,20 @@ typedef struct netcoding_packet_t {
 
 /* -------------------------------------------------------------------------- */
 
+static void print_header(netcoding_packet_header* header) {
+    for(int i = 0; i < NUM_COMBINATIONS; i++) {
+        uint32_t origin = header->holding_packets[i];
+        origin == EMPTY_PACKET_ID ? printf("-1") : printf("%u", origin);
+        if(i < NUM_COMBINATIONS - 1) printf(", ");
+    }
+}
+
+static void print_packet(netcoding_packet* packet) {
+    printf("Header: [");
+    print_header(&packet->header);
+    printf("], Body: \"%s\"", packet->body);
+}
+
 static netcoding_packet create_packet(uint32_t packet_id, const char* message) {
     netcoding_packet packet;
     for(size_t i = 1; i < NUM_COMBINATIONS; i++)

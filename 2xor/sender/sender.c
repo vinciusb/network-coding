@@ -3,17 +3,16 @@
 #include "contiki-lib.h"
 #include "contiki-net.h"
 #include "contiki.h"
+#include "log.h"
 #include "sys/node-id.h"
 
 #define UDP_PORT 61618
-
 #define SEND_INTERVAL (4 * CLOCK_SECOND)
 
-static struct simple_udp_connection broadcast_connection;
+#define LOG_MODULE "App"
+#define LOG_LEVEL LOG_LEVEL_WARN
 
-#ifndef SIZE
-#define SIZE 100
-#endif
+static struct simple_udp_connection broadcast_connection;
 
 /*---------------------------------------------------------------------------*/
 PROCESS(udp_process, "UDP broadcast sender process");
@@ -26,11 +25,16 @@ static void receiver(struct simple_udp_connection *c,
                      uint16_t receiver_port,
                      const uint8_t *data,
                      uint16_t datalen) {
-    printf("Data received on port %d from port %d with length %d\n",
-           receiver_port,
-           sender_port,
-           datalen);
+    static netcoding_packet packet;
+    memcpy(&packet, data, PACKET_SIZE);
+
+    printf("Message received from ");
+    log_6addr_compact(sender_addr);
+    printf(". Packet[%u bytes]-> ", datalen);
+    print_packet(&packet);
+    printf("\n");
 }
+
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(udp_process, ev, data) {
     static struct etimer periodic_timer;
@@ -45,13 +49,21 @@ PROCESS_THREAD(udp_process, ev, data) {
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&periodic_timer));
     etimer_set(&periodic_timer, SEND_INTERVAL);
 
-    int packet_id = 0;
-    printf("PACKET SIZE = %d in node %d\n", (int)PACKET_SIZE, node_id);
+    printf("PACKET SIZE = %d in node %d with ip ", (int)PACKET_SIZE, node_id);
+    log_6addr_compact(&uip_ds6_get_link_local(-1)->ipaddr);
+    printf("\n");
+
+    static int packet_id = 0;
+    static netcoding_packet packet;
     char packet_message[PAYLOAD_SIZE];
+    static char buffer[PACKET_SIZE];
 
     while(1) {
         sprintf(packet_message, "Message %d from %d", packet_id, node_id);
-        netcoding_packet packet = create_packet(packet_id, packet_message);
+        packet = create_packet(packet_id, packet_message);
+        memcpy(buffer, &packet, sizeof(packet));
+
+        /*========================================================*/
 
         PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&periodic_timer));
         etimer_reset(&periodic_timer);
@@ -59,12 +71,13 @@ PROCESS_THREAD(udp_process, ev, data) {
         printf("Sending broadcast message %d\n", packet_id);
         uip_create_linklocal_allnodes_mcast(&addr);
 
-        // simple_udp_sendto(&broadcast_connection, &packet, PACKET_SIZE,
-        // &addr);
+        /*========================================================*/
+
+        simple_udp_sendto(&broadcast_connection, buffer, PACKET_SIZE, &addr);
 
         // Make sure no packet is going to have and invalid id
         packet_id++;
-        // packet_id = packet_id % EMPTY_PACKET_ID;
+        packet_id %= EMPTY_PACKET_ID;
     }
 
     PROCESS_END();
