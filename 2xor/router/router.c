@@ -1,14 +1,19 @@
 #include <stdio.h>
+#include "../netcoding/netcoding.h"
 #include "contiki-lib.h"
 #include "contiki-net.h"
 #include "contiki.h"
-// #include "net/mac/tsch/tsch.h"
+#include "log.h"
+#include "sys/node-id.h"
 
 #define UDP_PORT 61618
 
 #define SEND_INTERVAL (4 * CLOCK_SECOND)
 
 static struct simple_udp_connection broadcast_connection;
+static netcoding_node node;
+static char buffer[PACKET_SIZE];
+static uip_ipaddr_t addr;
 
 /*---------------------------------------------------------------------------*/
 PROCESS(udp_process, "UDP broadcast process");
@@ -21,17 +26,24 @@ static void receiver(struct simple_udp_connection *c,
                      uint16_t receiver_port,
                      const uint8_t *data,
                      uint16_t datalen) {
-    static int msg;
+    static netcoding_packet packet;
+    memcpy(&packet, data, PACKET_SIZE);
 
-    msg++;
-    printf("Data %d received length %d\n", msg, datalen);
+    printf("Message received from ");
+    log_6addr_compact(sender_addr);
+    printf(". Packet[%u bytes]-> ", datalen);
+    print_packet(&packet);
+    printf("\n");
+
+    static netcoding_packet packet_to_route;
+    packet_to_route = route_packet(&node, &packet);
+
+    simple_udp_sendto(&broadcast_connection, buffer, PACKET_SIZE, &addr);
 }
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(udp_process, ev, data) {
     static struct etimer periodic_timer;
-    // static struct etimer send_timer;
     uip_ipaddr_t addr;
-    static int alive;
 
     PROCESS_BEGIN();
 
@@ -45,15 +57,16 @@ PROCESS_THREAD(udp_process, ev, data) {
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&periodic_timer));
     etimer_set(&periodic_timer, SEND_INTERVAL);
 
+    printf("PACKET SIZE = %d in router %d with ip ", (int)PACKET_SIZE, node_id);
+    log_6addr_compact(&uip_ds6_get_link_local(-1)->ipaddr);
+    printf("\n");
+
+    node = create_node();
+
     while(1) {
         PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&periodic_timer));
         etimer_reset(&periodic_timer);
-        alive++;
-        printf("Alive %d\n", alive);
-
-        /*printf("Sending broadcast\n");
-          uip_create_linklocal_allnodes_mcast(&addr);
-          simple_udp_sendto(&broadcast_connection, "Test", 4, &addr);*/
+        uip_create_linklocal_allnodes_mcast(&addr);
     }
 
     PROCESS_END();

@@ -13,6 +13,7 @@
 #define LOG_LEVEL LOG_LEVEL_WARN
 
 static struct simple_udp_connection broadcast_connection;
+static netcoding_node node;
 
 /*---------------------------------------------------------------------------*/
 PROCESS(udp_process, "UDP broadcast sender process");
@@ -57,6 +58,8 @@ PROCESS_THREAD(udp_process, ev, data) {
     static netcoding_packet packet;
     char packet_message[PAYLOAD_SIZE];
     static char buffer[PACKET_SIZE];
+
+    node = create_node();
 
     while(1) {
         sprintf(packet_message, "Message %d from %d", packet_id, node_id);

@@ -1,6 +1,7 @@
 #ifndef NET_CODING_H_
 #define NET_CODING_H_
 
+#include <random.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -20,7 +21,7 @@ typedef struct netcoding_packet_t {
 
 #define PACKET_SIZE sizeof(netcoding_packet)
 
-/* -------------------------------------------------------------------------- */
+/* ------------------- PACKET ----------------------------------------------- */
 
 static void print_header(netcoding_packet_header* header) {
     for(int i = 0; i < NUM_COMBINATIONS; i++) {
@@ -38,8 +39,9 @@ static void print_packet(netcoding_packet* packet) {
 
 static netcoding_packet create_packet(uint32_t packet_id, const char* message) {
     netcoding_packet packet;
-    for(size_t i = 1; i < NUM_COMBINATIONS; i++)
-        packet.header.holding_packets[i] = EMPTY_PACKET_ID;
+    memset(packet.header.holding_packets,
+           EMPTY_PACKET_ID,
+           sizeof(packet.header.holding_packets));
     packet.header.holding_packets[0] = packet_id;
 
     size_t str_len = strlen(message);
@@ -52,6 +54,38 @@ static netcoding_packet create_packet(uint32_t packet_id, const char* message) {
     }
 
     return packet;
+}
+
+/* ------------------- NODE ----------------------------------------------- */
+#define NETCODING_WINDOW_SIZE 8
+#define COMBINATION_PERCENTAGE_RATE 30
+
+typedef struct netcoding_node_t {
+    uint32_t mixed_buffer[NETCODING_WINDOW_SIZE];
+} netcoding_node;
+
+static netcoding_node create_node() {
+    netcoding_node node;
+
+    node.mixed_buffer[0] = 2;
+
+    return node;
+}
+
+static int should_combine_packet() {
+    return rand() % 100 < COMBINATION_PERCENTAGE_RATE;
+}
+
+static netcoding_packet route_packet(netcoding_node* node,
+                                     netcoding_packet* packet) {
+    if(should_combine_packet()) {
+        netcoding_packet combined_packet;
+        // combine_packets(&packet, &combined_packet);
+        return combined_packet;
+    }
+    else {
+        return *packet;
+    }
 }
 
 #endif /* NET_CODING_H_ */
