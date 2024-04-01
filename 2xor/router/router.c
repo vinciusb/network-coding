@@ -38,6 +38,7 @@ static void receiver(struct simple_udp_connection *c,
     static netcoding_packet packet_to_route;
     packet_to_route = route_packet(&node, &packet);
 
+    memcpy(buffer, &packet_to_route, sizeof(packet));
     simple_udp_sendto(&broadcast_connection, buffer, PACKET_SIZE, &addr);
 }
 /*---------------------------------------------------------------------------*/
